@@ -6,7 +6,7 @@ def validate_image(image_path):
     '''
     pass
 
-def process_image(image_path, size=(100, 100)):
+def process_image(image_path, width=100):
     ''' Convert image to grayscale, resize, and return edges
     '''
     # Read image
@@ -15,9 +15,11 @@ def process_image(image_path, size=(100, 100)):
     if image is None:
         raise ValueError('Image could not be loaded.')
     
-    # Resize image (default 100x100px)
-    print(f'Resizing image to {size[0]} x {size[1]} pixels')
-    image_resized = cv2.resize(image, size)
+    # Resize image while maintaining aspect ratio. Let width constrain the dimensions and calculate the height
+    (h, w) = image.shape[:2]
+    scaled_height = int((width / w) * h)
+    print(f'Resizing image to {width} x {scaled_height} pixels')
+    image_resized = cv2.resize(image, (width, scaled_height))
     
     # Convert image to grayscale. Test with an already grayscale image. This might not work... may need to count channels
     print(f'Converting image to grayscale')
@@ -38,4 +40,4 @@ def process_image(image_path, size=(100, 100)):
     return edges
 
 
-process_image('star.png')
+process_image('images/star.png')
