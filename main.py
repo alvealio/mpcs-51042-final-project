@@ -20,7 +20,7 @@ def validate_image(image_path):
     # Check image channels?
     pass
 
-def process_image(image_path, width=500):
+def process_image(image_path, width=100, padding=10):
     ''' Convert image to grayscale, resize, and return edges
         Depending on certain image qualities examined in validate_image, we may want to pass different width args depending on image size and details
     '''
@@ -33,9 +33,17 @@ def process_image(image_path, width=500):
     (h, w) = image.shape[:2]
     scaled_height = int((width / w) * h)
     image_resized = cv2.resize(image, (width, scaled_height))
+
+    # Pad the image to ensure edges are on the border
+    padded_image = cv2.copyMakeBorder(
+        image_resized,
+        padding, padding, padding, padding,
+        cv2.BORDER_CONSTANT,
+        value=0
+    )
     
     # Convert image to grayscale. Test with an already grayscale image. This might not work... may need to count channels
-    image_gray = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
+    image_gray = cv2.cvtColor(padded_image, cv2.COLOR_BGR2GRAY)
     
     # Use binary threshold. Might want to make thresholds arguments.
     thresh = 128
@@ -48,25 +56,42 @@ def process_image(image_path, width=500):
     edges = cv2.Canny(binary, lower_bound, upper_bound)
 
     # Preview edges
-    cv2.imshow('Canny Edges', edges)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.imshow('Canny Edges', edges)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
     return edges
 
-def sample_contour(edges, sample_rate=5, area_threshold=2):
+def sample_contour(edges, sample_rate=5, area_threshold=10):
+    # Area threshold should be a function of image size
+    # https://docs.opencv.org/4.x/d4/d73/tutorial_py_contours_begin.html
+    # Retrieve all contours (RETR_LIST) with simple chain approximation to minimize points
     contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         raise ValueError("No contours detected")
+    print(cv2.contourArea(contours[0]))
+    print(f'There are {len(contours)} contours')
 
     # Filter out small contours
     contours_filtered = [x for x in contours if cv2.contourArea(x) > area_threshold]
     if not contours_filtered:
         raise ValueError("No contours of adequate size")
+    print(f'After filtering, there are {len(contours_filtered)} contours')
+    
+    color_img = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+    for cnt in contours_filtered:
+        # Generate a random color (B, G, R)
+        color = np.random.randint(0, 256, size=3).tolist()
+        cv2.drawContours(color_img, [cnt], -1, color, 2)
+
+    cv2.imshow("Contours with Different Colors", color_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
     
     # Merge points from each contour
     combined_points = []
-    for contour in contours_filtered:
+    for contour in contours:
         points = contour.reshape(-1,2)
         combined_points.append(points)
     
@@ -77,6 +102,7 @@ def sample_contour(edges, sample_rate=5, area_threshold=2):
     sampled_points = combined_points[::sample_rate]
     print(f'Number of sample points: {len(sampled_points)}')
     print(sampled_points)
+    
     return sampled_points
 
 
@@ -161,7 +187,8 @@ def generate_gpx(complete_route, chicago_graph, filename="route.gpx"):
     return filename
 
 if __name__ == '__main__': 
-    edges = process_image('images/heart.jpg')
+    edges = process_image('images/star.png')
+    contours = sample_contour(edges)
     # chicago_graph = plot_chicago_graph()
     # cropped_graph = crop_chicago_graph(chicago_graph)
     # full_route = image_to_route(edges, cropped_graph)
