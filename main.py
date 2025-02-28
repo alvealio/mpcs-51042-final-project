@@ -1,8 +1,11 @@
 import cv2
 import numpy as np
 import osmnx as ox
+import networkx as nx
 import pickle
 import gzip
+import gpxpy
+import gpxpy.gpx
 
 def validate_image(image_path):
     '''Examine image type, quality, and size to determine if viable input.
@@ -16,7 +19,7 @@ def validate_image(image_path):
     # Check image channels?
     pass
 
-def process_image(image_path, width=10):
+def process_image(image_path, width=500):
     ''' Convert image to grayscale, resize, and return edges
         Depending on certain image qualities examined in validate_image, we may want to pass different width args depending on image size and details
     '''
@@ -110,13 +113,41 @@ def image_to_route(edges, chicago_graph, bounds=(41.900500, 41.830983, -87.61735
     # https://stackoverflow.com/questions/480214/how-do-i-remove-duplicates-from-a-list-while-preserving-order
     route_nodes = list(dict.fromkeys(route_nodes))
     print(route_nodes)
-    return route_nodes
+    # Connect each node with a series of closest nodes
+    complete_route = []
+    for i in range(len(route_nodes) - 1):
+        try:
+            path = nx.shortest_path(chicago_graph, route_nodes[i], route_nodes[i + 1], weight="length")
+            # Prevent node duplication
+            if i > 0:
+                path = path[1:]
+            complete_route.extend(path)
+        except nx.NetworkXNoPath:
+            continue
+    
+    print(complete_route)
+    return complete_route
 
-def generate_gpx(filename="route.gpx"):
-    pass
+def generate_gpx(complete_route, chicago_graph, filename="route.gpx"):
+    """ Generate gpx file from list of graph nodes"""
+    gpx = gpxpy.gpx.GPX()
+    gpx_track = gpxpy.gpx.GPXTrack()
+    gpx.tracks.append(gpx_track)
+    gpx_segment = gpxpy.gpx.GPXTrackSegment()
+    gpx_track.segments.append(gpx_segment)
+
+    for node in complete_route:
+        point = chicago_graph.nodes[node]
+        gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(point['y'], point['x']))
+    
+    with open(filename, 'w') as f:
+        f.write(gpx.to_xml())
+    
+    return filename
 
 if __name__ == '__main__': 
     edges = process_image('images/star.png')
     chicago_graph = plot_chicago_graph()
     cropped_graph = crop_chicago_graph(chicago_graph)
-    image_to_route(edges, cropped_graph)
+    full_route = image_to_route(edges, cropped_graph)
+    generate_gpx(full_route, cropped_graph)
