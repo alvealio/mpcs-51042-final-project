@@ -6,6 +6,7 @@ import pickle
 import gzip
 import gpxpy
 import gpxpy.gpx
+import matplotlib.pyplot as plt
 
 def validate_image(image_path):
     '''Examine image type, quality, and size to determine if viable input.
@@ -24,7 +25,6 @@ def process_image(image_path, width=500):
         Depending on certain image qualities examined in validate_image, we may want to pass different width args depending on image size and details
     '''
     # Read image
-    print(f'Reading {image_path} from disk')
     image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
     if image is None:
         raise ValueError('Image could not be loaded.')
@@ -32,42 +32,60 @@ def process_image(image_path, width=500):
     # Resize image while maintaining aspect ratio. Let width constrain the dimensions and calculate the height
     (h, w) = image.shape[:2]
     scaled_height = int((width / w) * h)
-    print(f'Resizing image to {width}x{scaled_height} pixels')
     image_resized = cv2.resize(image, (width, scaled_height))
     
     # Convert image to grayscale. Test with an already grayscale image. This might not work... may need to count channels
-    print(f'Converting image to grayscale')
     image_gray = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
     
     # Use binary threshold. Might want to make thresholds arguments.
     thresh = 128
     max_val = 255 
-    print(f'Applying binary threshold with threshold value {thresh} and max value {max_val}')
     _, binary = cv2.threshold(image_gray, thresh, max_val, cv2.THRESH_BINARY)
 
     # Use Canny edge detection. Might also want Canny parameters to be arguments
     lower_bound = 100 # Gradients below this threshold are non-edges
     upper_bound = 200 # Gradients above this threshold are strong edges
-    print(f'Detecting edges with lower and upper bounds of {lower_bound} and {upper_bound}, respectively')
     edges = cv2.Canny(binary, lower_bound, upper_bound)
 
-    print(type(edges))
-    print(edges)
-    # Each pixel of the edge in my ndarrray is 255. Might consider normalizing these to 1 if needed for later operations
-
     # Preview edges
-    # cv2.imshow('Canny Edges', edges)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cv2.imshow('Canny Edges', edges)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     return edges
+
+def sample_contour(edges, sample_rate=5, area_threshold=2):
+    contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        raise ValueError("No contours detected")
+
+    # Filter out small contours
+    contours_filtered = [x for x in contours if cv2.contourArea(x) > area_threshold]
+    if not contours_filtered:
+        raise ValueError("No contours of adequate size")
+    
+    # Merge points from each contour
+    combined_points = []
+    for contour in contours_filtered:
+        points = contour.reshape(-1,2)
+        combined_points.append(points)
+    
+    # Combine points vertically into a single array
+    combined_points = np.vstack(combined_points)
+
+    # Sample points on the contour
+    sampled_points = combined_points[::sample_rate]
+    print(f'Number of sample points: {len(sampled_points)}')
+    print(sampled_points)
+    return sampled_points
+
 
 def get_chicago_graph():
     # Note this takes a long time (Chicago is large...). Let's save the result with pickle and only call this function if that pickle file does not exist
 
     place = "Chicago, Illinois, USA"
     # Set network_type to 'walk' so this doesn't return non-runnable paths
-    graph = ox.graph_from_place(place, network_type='walk')
+    graph = ox.graph_from_place(place, network_type='walk', simplify=True)
 
     # Compress and pickle the graph
     with gzip.open("chicago_walk_graph.pkl.gz", "wb") as f:
@@ -93,22 +111,20 @@ def image_to_route(edges, chicago_graph, bounds=(41.900500, 41.830983, -87.61735
     """
     # Get coordinate bounds from chicago_graph. Might need this to be dynamic later.
     # Need to convert graph to GeoDataFrames
-
+    sampled_points = sample_contour(edges)
 
     width, height = edges.shape
     north, south, east, west = bounds
 
     # Treat each ndarray element as a coordinate normalized to the height and width of the image
     route_nodes = []
-    for y in range(height):
-        for x in range(width):
-            if edges[y, x] == 255:
-                # Calculate latitude and longitude for each point
-                latitude = north - (y / height) * (north - south)
-                longitude = east - (x / width) * (east - west)
-                # https://stackoverflow.com/questions/69392846/why-does-new-osmnx-nearest-nodes-function-return-different-results-than-old-fu
-                nearest_node = ox.nearest_nodes(chicago_graph, longitude, latitude)
-                route_nodes.append(nearest_node)
+    for (x, y) in sampled_points:
+        # Calculate latitude and longitude for each point
+        latitude = north - (y / height) * (north - south)
+        longitude = east - (x / width) * (east - west)
+        # https://stackoverflow.com/questions/69392846/why-does-new-osmnx-nearest-nodes-function-return-different-results-than-old-fu
+        nearest_node = ox.nearest_nodes(chicago_graph, longitude, latitude)
+        route_nodes.append(nearest_node)
     # Remove duplicate nodes, but maintain order
     # https://stackoverflow.com/questions/480214/how-do-i-remove-duplicates-from-a-list-while-preserving-order
     route_nodes = list(dict.fromkeys(route_nodes))
@@ -124,7 +140,6 @@ def image_to_route(edges, chicago_graph, bounds=(41.900500, 41.830983, -87.61735
             complete_route.extend(path)
         except nx.NetworkXNoPath:
             continue
-    
     print(complete_route)
     return complete_route
 
@@ -146,8 +161,8 @@ def generate_gpx(complete_route, chicago_graph, filename="route.gpx"):
     return filename
 
 if __name__ == '__main__': 
-    edges = process_image('images/star.png')
-    chicago_graph = plot_chicago_graph()
-    cropped_graph = crop_chicago_graph(chicago_graph)
-    full_route = image_to_route(edges, cropped_graph)
-    generate_gpx(full_route, cropped_graph)
+    edges = process_image('images/heart.jpg')
+    # chicago_graph = plot_chicago_graph()
+    # cropped_graph = crop_chicago_graph(chicago_graph)
+    # full_route = image_to_route(edges, cropped_graph)
+    # generate_gpx(full_route, cropped_graph)
