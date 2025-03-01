@@ -108,43 +108,7 @@ def extract_contours(edges, area_threshold=1):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     
-    return contours_filtered
-
-def merge_contours(contours):
-    remaining_contours = [x.copy() for x in contours]
-
-    merged = remaining_contours.pop(0).tolist()
-
-    while remaining_contours:
-        last_point = np.array(merged[-1])
-        best_distance = np.inf
-        best_index = None
-        best_reverse = False
-
-        # Find the next contour whose start or end point is the closest to the last point
-        for i, contour in enumerate(remaining_contours):
-            start_pt = contour[0]
-            end_pt = contour[-1]
-
-            distance_start = np.linalg.norm(last_point - start_pt)
-            distance_end = np.linalg.norm(last_point - end_pt)
-            candidate_distance = min(distance_start, distance_end)
-
-            # Use the shorter of the two distances
-            if candidate_distance < best_distance:
-                best_distance = candidate_distance
-                best_index = i
-                best_reverse = distance_end < distance_start
-        
-        # Pop contour from remaining and add to list in order
-        best_contour = remaining_contours.pop(best_index)
-        if best_reverse:
-            best_contour = best_contour[::-1]
-        merged.extend(best_contour.tolist())
-
-    combined_contours = np.array(merged, dtype=np.int32)
-    print(combined_contours)
-    return combined_contours
+    return np.vstack(contours_filtered)
 
 def get_chicago_graph():
     # Note this takes a long time (Chicago is large...). Let's save the result with pickle and only call this function if that pickle file does not exist
@@ -180,18 +144,27 @@ def image_to_route(contours, chicago_graph, dimensions, bounds=(41.900500, 41.83
     """
     Map contours to a running route
     """
-    # Get coordinate bounds from chicago_graph. Might need this to be dynamic later.
-    # Need to convert graph to GeoDataFrames
+    # I could improve the mapping by running this multiple times from different starting points and picking the graph with lowest error
+    # Store sum of errors (distances between node and points)
     
     width, height = dimensions
     north, south, east, west = bounds
+    bound_width = east - west
+    bound_height = north - south
 
+    # Make a scale factor so image isn't stretched 
+    scale_factor = min(bound_width / width, bound_height / height)
+
+    # Determine offsets
+    horizontal_offset = (bound_width - width * scale_factor) / 2
+    vertical_offset = (bound_height - height * scale_factor) / 2
+    
     # Treat each ndarray element as a coordinate normalized to the height and width of the image
     route_nodes = []
     for (x, y) in contours:
         # Calculate latitude and longitude for each point
-        latitude = north - (y / height) * (north - south)
-        longitude = east - (x / width) * (east - west)
+        latitude = north - (vertical_offset + y * scale_factor)
+        longitude = east - (horizontal_offset + x * scale_factor)
         # https://stackoverflow.com/questions/69392846/why-does-new-osmnx-nearest-nodes-function-return-different-results-than-old-fu
         nearest_node = ox.nearest_nodes(chicago_graph, longitude, latitude)
         route_nodes.append(nearest_node)
@@ -275,12 +248,11 @@ def animate_contour(combined_contours, interval=20):
 
 if __name__ == '__main__': 
     # get_chicago_graph()
-    edges, dimensions = process_image('images/star.png')
+    edges, dimensions = process_image('images/heart.jpg')
     contours = extract_contours(edges)
-    combined_contours = merge_contours(contours)
     chicago_graph = plot_chicago_graph()
     cropped_graph = crop_chicago_graph(chicago_graph)
-    full_route = image_to_route(combined_contours, cropped_graph, dimensions)
+    full_route = image_to_route(contours, cropped_graph, dimensions, bounds=(41.900962, 41.889058, -87.642894, -87.620236))
     generate_gpx(full_route, cropped_graph)
 
-    animate_contour(combined_contours, interval=50)
+    animate_contour(contours, interval=50)
