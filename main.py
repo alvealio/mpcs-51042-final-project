@@ -21,7 +21,7 @@ def validate_image(image_path):
     # Check image channels?
     pass
 
-def process_image(image_path, width=300, padding=20):
+def process_image(image_path, width=500, padding=20):
     ''' Convert image to grayscale, resize, and return edges
         Depending on certain image qualities examined in validate_image, we may want to pass different width args depending on image size and details
     '''
@@ -204,55 +204,13 @@ def generate_gpx(complete_route, chicago_graph, filename="route.gpx"):
     
     return filename
 
-def animate_contour(combined_contours, interval=20):
-    """
-    Animate the drawing of the merged contour using matplotlib.
-
-    Parameters:
-        combined_contours (ndarray): An array of shape (n_points, 2) with the contour points.
-        interval (int): Milliseconds between frames.
-    """
-    fig, ax = plt.subplots()
-    ax.set_aspect('equal')
-    
-    # Determine plot limits based on contour points
-    x_vals = combined_contours[:, 0]
-    y_vals = combined_contours[:, 1]
-    buffer = 10  # optional buffer around the data
-    ax.set_xlim(np.min(x_vals) - buffer, np.max(x_vals) + buffer)
-    ax.set_ylim(np.min(y_vals) - buffer, np.max(y_vals) + buffer)
-    
-    # Create an empty line object to update during the animation
-    line, = ax.plot([], [], lw=2, color='blue')
-    
-    def init():
-        line.set_data([], [])
-        return line,
-    
-    def update(frame):
-        # Update the line data to show points up to the current frame index
-        current_points = combined_contours[:frame + 1]
-        line.set_data(current_points[:, 0], current_points[:, 1])
-        return line,
-    
-    # Create the animation
-    ani = animation.FuncAnimation(
-        fig, update, frames=len(combined_contours),
-        init_func=init, blit=True, interval=interval, repeat=False
-    )
-    
-    plt.title("Animated Merged Contour")
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.show()
-
 if __name__ == '__main__': 
     # get_chicago_graph()
     edges, dimensions = process_image('images/heart.jpg')
     contours = extract_contours(edges)
     chicago_graph = plot_chicago_graph()
     cropped_graph = crop_chicago_graph(chicago_graph)
-    full_route = image_to_route(contours, cropped_graph, dimensions, bounds=(41.900962, 41.889058, -87.642894, -87.620236))
+    full_route = image_to_route(contours, cropped_graph, dimensions)
     generate_gpx(full_route, cropped_graph)
 
     animate_contour(contours, interval=50)
