@@ -6,20 +6,28 @@ import pickle
 import gzip
 import gpxpy
 import gpxpy.gpx
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 
-def validate_image(image_path):
+def validate_image(image_path, min_width=100, min_height=100):
     '''Examine image type, quality, and size to determine if viable input.
     '''
-    # We should probably read image here then pass to process_image
+    image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    if image is None:
+        raise ValueError('Image could not be loaded. Image is either an unsupported format or corrupted.')
 
-    # Check image type
+    height, width = image.shape[:2]
+    if width < min_width or height < min_height:
+        raise ValueError(f'Image resolution too small ({width}x{height}). Minimum required size: {min_width}x{min_height}')
+    if len(image.shape) == 2:
+        # Grayscale images 
+        pass
+    elif len(image.shape) == 3:
+        channels = image.shape[2]
+        # Grayscale (1), BGR (3), BGRA (4)
+        if channels not in (1, 3, 4):
+            raise ValueError(f'Number of channels is unsupported: {channels}')
+    else:
+        raise ValueError(f'Image shape is unsupported: {image.shape}')
 
-    # Check image size
-
-    # Check image channels?
-    pass
 
 def process_image(image_path, width=500, padding=20):
     ''' Convert image to grayscale, resize, and return edges
@@ -212,5 +220,3 @@ if __name__ == '__main__':
     cropped_graph = crop_chicago_graph(chicago_graph)
     full_route = image_to_route(contours, cropped_graph, dimensions)
     generate_gpx(full_route, cropped_graph)
-
-    animate_contour(contours, interval=50)
