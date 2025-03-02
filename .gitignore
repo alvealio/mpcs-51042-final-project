@@ -1,3 +1,6 @@
 # Ignore Python virtual environment
 .venv/
 venv/
+
+# Ignore map graph
+*.pkl.gz
