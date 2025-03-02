@@ -31,7 +31,7 @@ def validate_image(image_path, min_width=100, min_height=100):
     return True
 
 
-def process_image(image_path, width=500, padding=20):
+def process_image(image_path, width=500, padding=20, binary_threshold=128):
     ''' Convert image to grayscale, resize, and return edges
         Depending on certain image qualities examined in validate_image, we may want to pass different width args depending on image size and details
     '''
@@ -49,11 +49,8 @@ def process_image(image_path, width=500, padding=20):
     image_gray = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
     
     # Use binary threshold. Might want to make thresholds arguments.
-    thresh = 128
     max_val = 255 
-    _, binary = cv2.threshold(image_gray, thresh, max_val, cv2.THRESH_BINARY)
-
-    # Pad the image to ensure edges are on the border
+    _, binary = cv2.threshold(image_gray, binary_threshold, max_val, cv2.THRESH_BINARY)
 
     # Use Canny edge detection. Might also want Canny parameters to be arguments
     lower_bound = 100 # Gradients below this threshold are non-edges
@@ -68,57 +65,59 @@ def process_image(image_path, width=500, padding=20):
     )
     padded_height, padded_width = padded_edges.shape[:2]
 
-    return padded_edges, (padded_width, padded_height)
-
-def extract_contours(edges, area_threshold=1):
-
+    # Dilate image to close gaps
     kernel = np.ones((3, 3), np.uint8)
-    edges = cv2.dilate(edges, kernel, iterations=2)
+    edges = cv2.dilate(padded_edges, kernel, iterations=2)
     
+    # Flood fill
     im_floodfill = edges.copy()
     h, w = edges.shape[:2]
-
-    # Create a mask that is 2 pixels larger than the image
     mask = np.zeros((h + 2, w + 2), np.uint8)
-    
-    # Flood fill from a corner (assuming the corner is background)
     cv2.floodFill(im_floodfill, mask, (0, 0), 255)
-    
-    # Invert floodfilled image: now the filled area becomes black and the original
-    # white shape is preserved.
     im_floodfill_inv = cv2.bitwise_not(im_floodfill)
-    
-    # Combine the original binary image with the inverted floodfilled image.
-    # This results in an image where the interior of the shape is filled.
     filled = edges | im_floodfill_inv
-    # Area threshold should be a function of image size
-    # https://docs.opencv.org/4.x/d4/d73/tutorial_py_contours_begin.html
-    # Retrieve all contours (RETR_LIST) with simple chain approximation to minimize points
-    contours, _ = cv2.findContours(filled, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        raise ValueError("No contours detected")
-    print(cv2.contourArea(contours[0]))
-    print(f'There are {len(contours)} contours')
-    for i, cnt in enumerate(contours):
-        print(f'Contour {i} is length {len(cnt)}: {cnt}')
 
-    # Filter out small contours and reshape
-    contours_filtered = [x.reshape(-1, 2) for x in contours] # if cv2.contourArea(x) > area_threshold]
-    if not contours_filtered:
-        raise ValueError("No contours of adequate size")
-    print(f'After filtering, there are {len(contours_filtered)} contours')
+    return filled, (padded_width, padded_height)
+
+def extract_min_contours(image_path, width=500, padding=20, threshold_init=200, threshold_step=-10, max_iter=20):
+    min_count  = np.inf
+    min_contours = None
+    for i in range(max_iter):
+        threshold = threshold_init + i * threshold_step
+        processed_image, dims = process_image(image_path, width, padding, threshold)
+        # https://docs.opencv.org/4.x/d4/d73/tutorial_py_contours_begin.html
+        contours, _ = cv2.findContours(processed_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contour_count = len(contours)
+
+        if contour_count < min_count and contour_count != 0:
+            min_count = contour_count
+            min_contours = contours
+        print(f'Found {len(contours)} contours')
+
+        if contour_count == 1:
+            break
+    if min_contours is None or len(min_contours) == 0:
+        raise ValueError("Unable to extract any contours")
     
+    plot_contours(processed_image, min_contours)
+
+    return min_contours, dims
+    
+def process_contours(contours):
+    if not contours:
+        raise ValueError("No contours provided")
+    largest = max(contours, key=cv2.contourArea)
+    return largest.reshape(-1, 2)
+
+def plot_contours(edges, contours):
     color_img = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-    for cnt in contours_filtered:
+    for cnt in contours:
         # Generate a random color (B, G, R)
         color = np.random.randint(0, 256, size=3).tolist()
         cv2.drawContours(color_img, [cnt], -1, color, 2)
-
     cv2.imshow("Contours with Different Colors", color_img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-    
-    return np.vstack(contours_filtered)
 
 def get_chicago_graph():
     # Note this takes a long time (Chicago is large...). Let's save the result with pickle and only call this function if that pickle file does not exist
@@ -199,12 +198,18 @@ def image_to_route(contours, chicago_graph, dimensions, bounds=(41.900500, 41.83
 
 def generate_gpx(complete_route, chicago_graph, filename="route.gpx"):
     """ Generate gpx file from list of graph nodes"""
+    # Create instance of GPX object
     gpx = gpxpy.gpx.GPX()
+    # Create instance of GPXTrack (path)
     gpx_track = gpxpy.gpx.GPXTrack()
+    # Append instance to tracks in GPX instance
     gpx.tracks.append(gpx_track)
+    # Create instance of GPXTrackSegment
     gpx_segment = gpxpy.gpx.GPXTrackSegment()
+    # Append to gpx_track 
     gpx_track.segments.append(gpx_segment)
 
+    # Append each node from the chicago graph needed for our route to the segnebt
     for node in complete_route:
         point = chicago_graph.nodes[node]
         gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(point['y'], point['x']))
@@ -216,9 +221,11 @@ def generate_gpx(complete_route, chicago_graph, filename="route.gpx"):
 
 if __name__ == '__main__': 
     # get_chicago_graph()
-    edges, dimensions = process_image('images/heart.jpg')
-    contours = extract_contours(edges)
+    #edges, dimensions = process_image('images/pikachu.png')
+    image_path = 'images/pikachu.png'
+    contours, dims = extract_min_contours(image_path)
+    contour = process_contours(contours)
     chicago_graph = plot_chicago_graph()
     cropped_graph = crop_chicago_graph(chicago_graph)
-    full_route = image_to_route(contours, cropped_graph, dimensions)
+    full_route = image_to_route(contour, cropped_graph, dims)
     generate_gpx(full_route, cropped_graph)
