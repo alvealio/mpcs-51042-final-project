@@ -1,3 +1,4 @@
+import os
 import osmnx as ox
 import networkx as nx
 import pickle
@@ -6,26 +7,19 @@ import gpxpy
 import gpxpy.gpx
 
 
-def get_chicago_graph():
-    # Note this takes a long time (Chicago is large...). Let's save the result with pickle and only call this function if that pickle file does not exist
-
-    place = "Chicago, Illinois, USA"
-
-    custom_filter = (
-    '["highway"~"footway|pedestrian|path|living_street|residential|secondary|primary"]'
-    '["highway"!~"service|alley"]'
-    )
-    # Set network_type to 'walk' so this doesn't return non-runnable paths
-    graph = ox.graph_from_place(place, network_type='walk', simplify=True, custom_filter=custom_filter)
-
-    # Compress and pickle the graph
-    with gzip.open("chicago_walk_graph.pkl.gz", "wb") as f:
-        pickle.dump(graph, f)
-
-def plot_chicago_graph():
-    CHICAGO_GRAPH_NAME = 'chicago_walk_graph.pkl.gz'
-    with gzip.open(CHICAGO_GRAPH_NAME, 'rb') as f:
-        graph = pickle.load(f)
+def get_map_graph(place="Chicago, Illinois, USA", filename='chicago_walk_graph.pkl.gz'):
+    if os.path.exists(filename):
+        with gzip.open(filename, 'rb') as f:
+            graph = pickle.load(f)
+    else:
+        custom_filter = (
+        '["highway"~"footway|pedestrian|path|living_street|residential|secondary|primary"]'
+        '["highway"!~"service|alley"]'
+        )
+        graph = ox.graph_from_place(place, network_type='walk', simplify=True, custom_filter=custom_filter)
+        with gzip.open(filename, "wb") as f:
+            pickle.dump(graph, f)
+    
     return graph
 
 #def crop_chicago_graph(chicago_graph, bounds=(41.900500, 41.830983, -87.617354, -87.659620)):
