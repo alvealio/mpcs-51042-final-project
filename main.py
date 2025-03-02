@@ -27,6 +27,8 @@ def validate_image(image_path, min_width=100, min_height=100):
             raise ValueError(f'Number of channels is unsupported: {channels}')
     else:
         raise ValueError(f'Image shape is unsupported: {image.shape}')
+    
+    return True
 
 
 def process_image(image_path, width=500, padding=20):
