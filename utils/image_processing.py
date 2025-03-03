@@ -64,7 +64,7 @@ def process_image(image_path, resize_width=500, padding=20, binary_threshold=128
     
     # Resize image while maintaining aspect ratio.
     (height, width) = image.shape[:2]
-    scaled_height = int((width / width) * height)
+    scaled_height = int((resize_width / width) * height)
     image_resized = cv2.resize(image, (resize_width, scaled_height))
 
     # Convert image to grayscale.
@@ -139,7 +139,7 @@ def extract_min_contours(image_path, resize_width=500, padding=20, threshold_ini
     if min_contours is None or len(min_contours) == 0:
         raise ValueError("Unable to extract any contours")
     
-    # plot_contours(processed_image, min_contours)
+    plot_contours(processed_image, min_contours)
 
     return min_contours, dimensions
     
