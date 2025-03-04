@@ -1,6 +1,15 @@
 # Ignore Python virtual environment
 .venv/
 venv/
+cache/
+gpx/
+uploads/
+images/
+__pycache__/
 
-# Ignore map graph
+
+# Ignore pickled graph
 *.pkl.gz
+
+*.gpx
+*.json
