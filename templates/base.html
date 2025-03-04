@@ -1,14 +1,21 @@
 <!--https://flask.palletsprojects.com/en/stable/patterns/flashing/-->
 <!doctype html>
-<title>Strava Art</title>
-<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
-{% with messages = get_flashed_messages() %}
-    {% if messages %}
-    <ul class=flashes>
-    {% for message in messages %}
-        <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-    {% endif %}
-{% endwith %}
-{% block body %}{% endblock %}
+<html>
+<head>
+    <title>Strava Art</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    {% block body %}{% endblock %}
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-bar">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+</body>
+</html>
