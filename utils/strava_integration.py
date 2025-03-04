@@ -1,6 +1,13 @@
 import requests
 import json
+import os
 from urllib.parse import urlencode
+
+########################################################################
+# This module is no longer used. Strava API does not allow writing to 
+# "My Routes" in a user's account. Can only upload actual running activities
+# in the form of a GPX file.
+########################################################################
 
 # https://developers.strava.com/docs/reference/#api-Uploads-createUpload
 # A lot of dependencies associated with Strava's standard API usage. Just use requests instead
@@ -15,7 +22,6 @@ REDIRECT_URI = "http://127.0.0.1:5000/strava_callback"
 AUTH_URL = "https://www.strava.com/oauth/authorize"
 TOKEN_URL = "https://www.strava.com/oauth/token"
 UPLOAD_URL = "https://www.strava.com/api/v3/uploads"
-
 
 # Authentication guide: https://developers.strava.com/docs/authentication/
 def get_auth_url():
@@ -51,11 +57,13 @@ def get_access_token(auth_code):
         'grant_type': 'authorization_code'
     }
     response = requests.post(TOKEN_URL, data=payload)
-    response.raise_for_status
+    response.raise_for_status()
     return response.json()
 
-
 # Uploading to Strava: https://developers.strava.com/docs/uploads/
+# After testing, it appears "Routes" are not writable via Strava API.
+# What this function is actually doing is uploading the GPX as an activity
+# Will rely on the user to upload their downloaded GPX file instead.
 def upload_gpx(file, access_token, activity_name="Strava Art", data_type="gpx"):
     """
     Uploads GPX file to Strava account.
@@ -69,17 +77,20 @@ def upload_gpx(file, access_token, activity_name="Strava Art", data_type="gpx"):
     Returns:
         dict: JSON response from Strava API
     """
-    header = {
+    if not os.path.exists(file):
+        raise FileNotFoundError(f"File not found: {file}")
+    
+    headers = {
         "Authorization": f"Bearer {access_token}"
     }
-    file = {
+    files = {
         "file": open(file, "rb")
     }
     payload = {
         "data_type": data_type,
         "name": activity_name
     }
-    response = requests.post(UPLOAD_URL, headers=header, files=file, data=payload)
+    response = requests.post(UPLOAD_URL, headers=headers, files=files, data=payload)
     response.raise_for_status()
     return response.json()
 
