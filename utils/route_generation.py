@@ -6,7 +6,6 @@ import gzip
 import gpxpy
 import gpxpy.gpx
 
-
 def get_map_graph(place="Chicago, Illinois, USA", filename='chicago_walk_graph.pkl.gz'):
     """
     Retrieves a map graph of Chicago (default) with OSMnx. Stores this graph in a compressed pickle file.
@@ -85,6 +84,8 @@ def contour_to_route(contour, graph, dimensions, bounds=(41.900500, 41.830983, -
     complete_route = []
     for i in range(len(route_nodes) - 1):
         try:
+            # If time, consider building my own shortest_path function. This is just a DFS on a directed graph weighted by length. 
+            # This would eliminate the NetworkX dependency and would be good algo practice.
             path = nx.shortest_path(graph, route_nodes[i], route_nodes[i + 1], weight="length")
             # Prevent node duplication
             if i > 0:
@@ -98,13 +99,14 @@ def contour_to_route(contour, graph, dimensions, bounds=(41.900500, 41.830983, -
 
     return complete_route
 
-def generate_gpx(route, graph, filename="route.gpx"):
+def generate_gpx(route, graph, gpx_folder, filename="route.gpx"):
     """
     Generate a GPX file from list of graph nodes in a map graph.
     
     Args:
         route (list): A list of map graph node IDs
         graph (networkx.MultiDiGraph): A directed graph of walkable streets/paths in specified location.
+        gpx_folder (str): Directory to save GPX file.
         filename (str, optional): Filename of the GPX file.
 
     Returns:
@@ -120,7 +122,8 @@ def generate_gpx(route, graph, filename="route.gpx"):
         point = graph.nodes[node]
         gpx_segment.points.append(gpxpy.gpx.GPXTrackPoint(point['y'], point['x']))
     
-    with open(filename, 'w') as f:
+    file_path = os.path.join(gpx_folder, filename)
+    with open(file_path, 'w') as f:
         f.write(gpx.to_xml())
     
     return filename
