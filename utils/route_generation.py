@@ -84,8 +84,6 @@ def contour_to_route(contour, graph, dimensions, bounds=(41.900500, 41.830983, -
     complete_route = []
     for i in range(len(route_nodes) - 1):
         try:
-            # If time, consider building my own shortest_path function. This is just a DFS on a directed graph weighted by length. 
-            # This would eliminate the NetworkX dependency and would be good algo practice.
             path = nx.shortest_path(graph, route_nodes[i], route_nodes[i + 1], weight="length")
             # Prevent node duplication
             if i > 0:
