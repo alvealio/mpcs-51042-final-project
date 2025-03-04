@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
 {% block body %}
-<div class="container">
-    <h1>Image to Strava Art Generator</h1>
-    <p><a href="{{ url_for('select_bounds') }}">Select Mapping Bounds</a></p>
-    <p><a href="{{ url_for('process_image_route') }}">Upload Image</a></p>
-</div>
+    <div class="container">
+        <h1>Image to Strava Art Generator</h1>
+        <p><a href="{{ url_for('select_bounds') }}">Select Mapping Bounds</a></p>
+        <p><a href="{{ url_for('process_image_route') }}">Upload Image</a></p>
+    </div>
 {% endblock %}
