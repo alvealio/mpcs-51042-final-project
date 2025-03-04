@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 
 {% block body %}
-    <h1>Process Image to Generate GPX</h1>
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="image" accept="image/*">
-        <input type="submit" value="Process Image">
-    </form>
-    <p><a href="{{ url_for('index') }}">Home</a></p>
+    <div class="container">
+        <h1>Upload Image to Generate GPX</h1>
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="image" accept="image/*">
+            <input type="submit" value="Process Image">
+        </form>
+        <p><a href="{{ url_for('index') }}">Home</a></p>
+    </div>
 {% endblock %}
