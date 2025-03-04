@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session
 import os
 import uuid
 from utils.image_processing import validate_image, extract_min_contours, process_contours
@@ -22,9 +22,31 @@ app.config["GPX_FOLDER"] = GPX_FOLDER
 def index():
     return render_template("index.html")
 
+# Route for selecting map boundaries
+@app.route("/select_bounds", methods=["GET", "POST"])
+def select_bounds():
+    if request.method == "POST":
+        try:
+            north = float(request.form.get("north"))
+            south = float(request.form.get("south"))
+            east = float(request.form.get("east"))
+            west = float(request.form.get("west"))
+            session["bounds"] = (north, south, east, west)
+            flash("Successfully defined map boundaries!")
+            return redirect(url_for("process_image_route"))
+        except:
+            flash("Invalid bounds selected. Please try again.")
+            return redirect(url_for("select_bounds"))
+    return render_template("select_bounds.html")
+
 # Route to process an image and select map bounds
 @app.route("/process_image", methods=["GET", "POST"])
 def process_image_route():
+    # Check that user has defined map boundaries in the session
+    if "bounds" not in session:
+        flash("Please select map boundary first.")
+        return redirect(url_for("select_bounds"))
+
     if request.method == "POST":
         file = request.files.get("image")
         if not file or file.filename == "":
@@ -41,8 +63,8 @@ def process_image_route():
             contours, dims = extract_min_contours(file_path)
             contour = process_contours(contours)
             chicago_graph = get_map_graph()
-            cropped_graph = crop_map_graph(chicago_graph)
-            route = contour_to_route(contour, cropped_graph, dims)
+            cropped_graph = crop_map_graph(chicago_graph, session["bounds"])
+            route = contour_to_route(contour, cropped_graph, dims, session["bounds"])
             gpx_filename = generate_gpx(route, cropped_graph, app.config["GPX_FOLDER"])
             return redirect(url_for("result", filename=gpx_filename))
         except Exception as e:
