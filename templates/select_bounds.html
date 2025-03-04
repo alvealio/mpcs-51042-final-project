@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block body %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Mapping Boundary</title>
+    <!--Load style sheets for Leaflet and Leaflet.draw-->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <style>
+        #map { height: 500px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Select Mapping Boundary</h1>
+        <div id="map"></div>
+        <form id="boundsForm" method="POST" action="{{ url_for('select_bounds') }}">
+            <input type="hidden" name="north" id="north">
+            <input type="hidden" name="south" id="south">
+            <input type="hidden" name="east" id="east">
+            <input type="hidden" name="west" id="west">
+            <button type="submit">Confirm Boundary</button>
+        </form>
+        <p><a href="{{ url_for('index') }}">Home</a></p>
+    </div>
+    <!--Load Leaflet and Leaflet.draw JavaScript files-->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script>
+        // Initialize Leaflet map with initial focus around Chicago
+        var map = L.map('map').setView([41.88, -87.63], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 20,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        // Create the FeatureGroup to store our rectangle
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        
+        // https://leaflet.github.io/Leaflet.draw/docs/leaflet-draw-latest.html#l-draw-toolbar
+        // Create drawing toolbar UI. Disable all shapes except rectangle.
+        var drawControl = new L.Control.Draw({
+            draw: {
+                marker: false,
+                polyline: false,
+                circle: false,
+                circlemarker: false,
+                polygon: false,
+                rectangle: true
+            },
+            edit: { featureGroup: drawnItems }
+        });
+        // Add drawing control to the map
+        map.addControl(drawControl);
+
+        // Add an event listener. Event triggers when user finishes drawing the rectangle
+        // Clear previous shapes, retrieve new layer and add layer to drawnItems
+        map.on(L.Draw.Event.CREATED, function(e) {
+            drawnItems.clearLayers();
+            var layer = e.layer;
+            drawnItems.addLayer(layer);
+        });
+
+        // Add an event listener. Event triggers when user presses the submit "Confirm Boundary" button.
+        document.getElementById("boundsForm").addEventListener("submit", function(e) {
+            // Stop form submission if no shape was drawn
+            if (drawnItems.getLayers().length === 0) {
+                alert("Please draw a rectangle first.");
+                e.preventDefault();
+                return;
+            }
+            // Set each hidden input field to the geographic dimensions of the rectangle
+            var bounds = drawnItems.getLayers()[0].getBounds();
+            document.getElementById("north").value = bounds.getNorth();
+            document.getElementById("south").value = bounds.getSouth();
+            document.getElementById("east").value = bounds.getEast();
+            document.getElementById("west").value = bounds.getWest();
+        });
+    </script>
+</body>
+</html>
+{% endblock %}
