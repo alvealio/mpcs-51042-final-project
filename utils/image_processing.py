@@ -123,13 +123,12 @@ def extract_min_contours(image_path, resize_width=500, padding=20, threshold_ini
     Raises:
         ValueError: If no contours are found.
     """
-    min_count  = np.inf
+    min_count = np.inf
     min_contours = None
     for i in range(max_iter):
         threshold = threshold_init + i * threshold_step
         processed_image, dimensions = process_image(image_path, resize_width, padding, threshold)
         contours, _ = cv2.findContours(processed_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
         contour_count = len(contours)
         if contour_count < min_count and contour_count != 0:
             min_count = contour_count
@@ -139,7 +138,8 @@ def extract_min_contours(image_path, resize_width=500, padding=20, threshold_ini
     if min_contours is None or len(min_contours) == 0:
         raise ValueError("Unable to extract any contours")
     
-    plot_contours(processed_image, min_contours)
+    # Need to disable this during Flask use. Will raise unknown C++ error in OpenCV
+    # plot_contours(processed_image, min_contours)
 
     return min_contours, dimensions
     
