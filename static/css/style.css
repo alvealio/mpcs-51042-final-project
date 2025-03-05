@@ -1,0 +1,25 @@
+body {
+    background-color: rgb(225, 225, 225);
+    font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    margin: 20px;
+}
+
+h1 {
+    color: rgb(0, 80, 165)
+}
+
+a {
+    color: rgb(0, 80, 165)
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.container {
+    background-color: rgb(255, 255, 255);
+    max-width: 800px;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
