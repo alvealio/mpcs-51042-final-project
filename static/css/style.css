@@ -24,3 +24,26 @@ a:hover {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
+
+.flash-bar {
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    background-color: rgb(255, 255, 255);
+    color: rgb(180, 0, 0);
+    padding: 10px;
+    text-align: center;
+    z-index: 1000;
+}
+
+.flash-bar ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.flash-bar li {
+    margin: 0;
+    padding: 0;
+}
