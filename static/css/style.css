@@ -1,5 +1,5 @@
 body {
-    background-color: rgb(225, 225, 225);
+    background-color: rgb(245, 245, 245);
     font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     margin: 20px;
 }
@@ -19,6 +19,7 @@ a:hover {
 .container {
     background-color: rgb(255, 255, 255);
     max-width: 800px;
+    margin: 0 auto;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
