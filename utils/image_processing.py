@@ -27,11 +27,12 @@ def validate_image(image_path, min_width=100, min_height=100):
     if width < min_width or height < min_height:
         raise ValueError(f'Image resolution too small ({width}x{height}). Minimum required size: {min_width}x{min_height}')
     if len(image.shape) == 2:
+        # This could be a grayscale image.
         pass
     elif len(image.shape) == 3:
         channels = image.shape[2]
         # Supported channel counts: Grayscale (1), BGR (3), BGRA (4)
-        if channels not in (1, 3, 4):
+        if channels not in (3, 4):
             raise ValueError(f'Number of channels is unsupported: {channels}')
     else:
         raise ValueError(f'Image shape is unsupported: {image.shape}')
@@ -67,8 +68,11 @@ def process_image(image_path, resize_width=500, padding=20, binary_threshold=128
     scaled_height = int((resize_width / width) * height)
     image_resized = cv2.resize(image, (resize_width, scaled_height))
 
-    # Convert image to grayscale.
-    image_gray = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
+    # Convert image to grayscale if not already grayscale.
+    if len(image_resized.shape) == 3 and image_resized.shape[2] in (3, 4):
+        image_gray = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
+    else:
+        image_gray = image_resized
     
     # Apply a binary threshold
     _, image_binary = cv2.threshold(image_gray, binary_threshold, 255, cv2.THRESH_BINARY)
