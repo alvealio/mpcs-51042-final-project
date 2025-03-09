@@ -26,3 +26,4 @@ Generates custom Strava art by transforming user-uploaded images into runnable r
 3. Download the [Chicago Map Graph](https://drive.google.com/file/d/1evbrh8LIOWXiz2ZNmvMtsWmgumY0_CD7/view?usp=sharing) and place in root directory of the project. Note: if the graph file is not present, the app will call OSMnx to generate it which may take some time.
 4. Run app.py (App should now be running locally at http://127.0.0.1:5000)
 
+# [Project Video](https://youtu.be/Zl--ywcK2NY?si=e3dlQM_FovjW7Jsl)
